@@ -1,0 +1,13 @@
+vllm==0.11.0
+transformers==4.57.0
+verl==0.6.1
+qwen-vl-utils
+datasets
+huggingface_hub
+flash-attn
+torch
+numpy
+pandas
+pyarrow
+mlcroissant
+sentence-transformers

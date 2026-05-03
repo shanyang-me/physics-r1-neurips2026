@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+.env
+*.tgz
+*.parquet
+*.jsonl
+results/
+models/
+verl_*/
+data/physreason_full/
+data/physunibench/
+*.safetensors
+*.pt
+.ipynb_checkpoints/
