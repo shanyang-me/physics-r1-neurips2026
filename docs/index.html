@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta name="title" content="Physics-R1: An Audited Olympiad Corpus and Recipe for Visual Physics Reasoning">
+  <meta name="description" content="A three-stage contamination audit (Jaccard → embedding cosine → LLM judge) surfaces 134 SciInstruct near-duplicates that single-stage audits miss, plus a 17-pp Estonian–English translation delta and a 46-pp format-and-novelty gradient. Releases PhysCorp-A, PhysR1Corp, PhysOlym-A, and the Physics-R1 RL recipe.">
+  <meta name="keywords" content="physics reasoning, multimodal, vision-language model, contamination audit, olympiad benchmark, RL from verifiable rewards, LLM-as-judge, NeurIPS 2026">
+  <meta name="author" content="Shan Yang">
+  <meta name="robots" content="index, follow">
+
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Physics-R1: An Audited Olympiad Corpus and Recipe for Visual Physics Reasoning">
+  <meta property="og:description" content="An audited multimodal physics corpus + 99.8%-novel-source held-out olympiad eval + a binary-reward GSPO+DAPO recipe. NeurIPS 2026 Datasets & Benchmarks.">
+  <meta property="og:url" content="https://shanyang-me.github.io/physics-r1-neurips2026/">
+  <meta property="og:image" content="https://shanyang-me.github.io/physics-r1-neurips2026/static/images/social_preview.png">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Physics-R1: An Audited Olympiad Corpus and Recipe for Visual Physics Reasoning">
+  <meta name="twitter:description" content="Three-stage audit surfaces 134 SciInstruct near-dups single-stage misses · 17-pp ET–EN translation delta · 46-pp format-novelty gradient · PhysOlym-A 99.8% novel-source held-out olympiad eval.">
+  <meta name="twitter:image" content="https://shanyang-me.github.io/physics-r1-neurips2026/static/images/social_preview.png">
+
+  <meta name="citation_title" content="Physics-R1: An Audited Olympiad Corpus and Recipe for Visual Physics Reasoning">
+  <meta name="citation_author" content="Yang, Shan">
+  <meta name="citation_publication_date" content="2026">
+  <meta name="citation_conference_title" content="NeurIPS 2026 Datasets and Benchmarks Track">
+  <meta name="citation_pdf_url" content="https://shanyang-me.github.io/physics-r1-neurips2026/static/pdfs/physics-r1.pdf">
+
+  <title>Physics-R1: An Audited Olympiad Corpus and Recipe for Visual Physics Reasoning</title>
+
+  <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
+  <link rel="stylesheet" href="static/css/bulma.min.css">
+  <link rel="stylesheet" href="static/css/index.css">
+  <link rel="stylesheet" href="static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script defer src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="static/js/fontawesome.all.min.js"></script>
+  <script defer src="static/js/bulma-carousel.min.js"></script>
+  <script defer src="static/js/bulma-slider.min.js"></script>
+  <script defer src="static/js/index.js"></script>
+  <script defer src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    .finding-card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 1.5rem;
+      height: 100%;
+    }
+    .finding-card .finding-stat {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: #2563eb;
+      line-height: 1.1;
+    }
+    .finding-card .finding-label {
+      font-size: 0.95rem;
+      color: #6b7280;
+      margin-top: 0.25rem;
+    }
+    .finding-card h4 {
+      font-weight: 700;
+      margin-top: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+    .finding-card p {
+      color: #374151;
+      font-size: 0.95rem;
+    }
+    .artifact-table th { background: #f3f4f6; }
+    .artifact-table code { font-size: 0.85em; }
+    .pipeline-stage {
+      background: #f9fafb;
+      border-left: 4px solid #2563eb;
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.75rem;
+      border-radius: 0 6px 6px 0;
+    }
+    .pipeline-stage h5 { margin: 0 0 0.25rem 0; font-weight: 700; }
+    .pipeline-stage p { margin: 0; color: #4b5563; font-size: 0.95rem; }
+    .results-table th, .results-table td { text-align: right; }
+    .results-table th:first-child, .results-table td:first-child { text-align: left; }
+    .results-table .ours { background: #eff6ff; font-weight: 600; }
+    .results-table .delta { color: #059669; font-weight: 600; font-size: 0.85em; }
+    .composition-card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 1.25rem 1rem 1rem 1rem;
+      height: 100%;
+    }
+    .composition-card h4 {
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 0.25rem;
+    }
+    .composition-card .composition-sub {
+      text-align: center;
+      color: #6b7280;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+    .composition-card .plot { width: 100%; height: 320px; }
+  </style>
+</head>
+
+<body>
+
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title">Physics-R1</h1>
+          <h2 class="subtitle is-3 publication-subtitle" style="margin-top: 0.5rem; font-weight: 500;">
+            An Audited Olympiad Corpus and Recipe for Visual Physics Reasoning
+          </h2>
+
+          <div class="is-size-5 publication-authors" style="margin-top: 1.5rem;">
+            <span class="author-block">
+              <a href="https://github.com/shanyang-me" target="_blank">Shan Yang</a>
+            </span>
+          </div>
+
+          <div class="is-size-6 publication-authors" style="margin-top: 0.5rem;">
+            <span class="author-block">
+              <i class="fas fa-envelope"></i> <a href="mailto:alexyangshan@gmail.com">alexyangshan@gmail.com</a>
+            </span>
+          </div>
+
+          <div class="is-size-5 publication-venue" style="margin-top: 1rem; color: #6b7280;">
+            <strong>NeurIPS 2026</strong> &mdash; Datasets &amp; Benchmarks Track
+          </div>
+
+          <div class="column has-text-centered" style="margin-top: 1.5rem;">
+            <div class="publication-links">
+              <span class="link-block">
+                <a href="static/pdfs/physics-r1.pdf" target="_blank" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-file-pdf"></i></span>
+                  <span>Paper</span>
+                </a>
+              </span>
+
+              <span class="link-block">
+                <a href="https://github.com/shanyang-me/physics-r1-neurips2026" target="_blank" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fab fa-github"></i></span>
+                  <span>Code</span>
+                </a>
+              </span>
+
+              <span class="link-block">
+                <a href="https://huggingface.co/datasets/physics-r1-anonymous/physcorp-a" target="_blank" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">&#x1F917;</span>
+                  <span>PhysCorp-A</span>
+                </a>
+              </span>
+
+              <span class="link-block">
+                <a href="https://huggingface.co/datasets/physics-r1-anonymous/physr1corp" target="_blank" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">&#x1F917;</span>
+                  <span>PhysR1Corp</span>
+                </a>
+              </span>
+
+              <span class="link-block">
+                <a href="https://huggingface.co/datasets/physics-r1-anonymous/physolym-a" target="_blank" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">&#x1F917;</span>
+                  <span>PhysOlym-A</span>
+                </a>
+              </span>
+
+              <span class="link-block">
+                <a href="https://github.com/shanyang-me/physics-r1-neurips2026/blob/main/croissant.json" target="_blank" class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon"><i class="fas fa-cube"></i></span>
+                  <span>Croissant</span>
+                </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">TL;DR</h2>
+        <div class="content has-text-justified">
+          <p>
+            Multimodal physics evaluation has three undetected construction practices that distort how the field measures
+            vision-language reasoning: <strong>train&ndash;eval contamination</strong> (single-stage 5-gram-Jaccard audits report
+            zero hits where a three-stage audit surfaces 134 SciInstruct near-duplicates), <strong>translation drift</strong>
+            (Sonnet 4.5 attains 30.5% on Estonian-original olympiad problems vs. 13.6% on English translations of the same
+            problems), and <strong>MCQ saturation</strong> (a 46-pp same-model score gradient between PhyX 4-way MCQ and
+            open-ended olympiad evaluation). We release four artifacts addressing these gaps:
+            <em>PhysCorp-A</em> (6,432-record three-stage-audited multimodal corpus), <em>PhysR1Corp</em> (2,268-record
+            closed-form RL pool), <em>PhysOlym-A</em> (500-problem 99.8%-novel-source held-out olympiad eval with native
+            difficulty labels and an EN/ET bilingual subset), and <em>Physics-R1</em>, a reference GSPO+DAPO recipe that
+            lifts PhysOlym-A liberal by +17.6 pp over the Qwen3-VL-8B-Thinking base.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="section" style="background: #fafbfc;">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Three Findings</h2>
+    <div class="columns" style="margin-top: 1.5rem;">
+      <div class="column">
+        <div class="finding-card">
+          <div class="finding-stat">134</div>
+          <div class="finding-label">SciInstruct near-duplicates</div>
+          <h4>Single-stage audit reports clean</h4>
+          <p>
+            UGPhysics-Train, SciInstruct, and MMK12 pass single-stage 5-gram-Jaccard audits with
+            <strong>zero hits</strong> across all six public physics evals. A three-stage audit
+            (Jaccard &rarr; mxbai-embed-large cosine &rarr; Haiku-4.5 LLM-judge) surfaces 4,846 paraphrase
+            candidates and 134 close-duplicates in SciInstruct alone.
+          </p>
+        </div>
+      </div>
+      <div class="column">
+        <div class="finding-card">
+          <div class="finding-stat">17 pp</div>
+          <div class="finding-label">ET &rarr; EN translation delta</div>
+          <h4>Translation underestimates ability</h4>
+          <p>
+            On 59 paired Estonian/English olympiad problems, Sonnet 4.5 attains 30.5% strict on
+            Estonian originals vs. <strong>13.6% on English translations</strong> of the same problems
+            (sign test <em>p</em>=0.011, McNemar <em>p</em>=0.021, paired bootstrap 95% CI [+5.1, +28.9] pp).
+          </p>
+        </div>
+      </div>
+      <div class="column">
+        <div class="finding-card">
+          <div class="finding-stat">46 pp</div>
+          <div class="finding-label">format&ndash;novelty gradient</div>
+          <h4>Same model, three benchmarks</h4>
+          <p>
+            On identical Sonnet 4.5 weights: <strong>79.7%</strong> on PhyX (4-way MCQ) &rarr; 50.4% on
+            OlympiadBench-Physics (open-ended) &rarr; <strong>33.4%</strong> on PhysOlym-A (open-ended,
+            novel-source, audited). Format and novelty alone move the score 46 points on fixed weights.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">The Three-Stage Audit Pipeline</h2>
+    <div class="content" style="margin-top: 1.5rem;">
+      <p class="has-text-centered" style="color: #6b7280;">
+        Pairwise across the training pool and six public physics evals; pseudocode in
+        <a href="https://github.com/shanyang-me/physics-r1-neurips2026/tree/main/audit" target="_blank">audit/</a>.
+      </p>
+
+      <div class="pipeline-stage">
+        <h5>Stage 1 &mdash; n-gram Jaccard &ge; 0.4</h5>
+        <p>Tokenize each problem statement with a unicode word tokenizer, build the 5-gram shingle set, flag pairs by Jaccard. Catches verbatim duplication; <strong>misses paraphrase-class</strong> contamination entirely.</p>
+      </div>
+
+      <div class="pipeline-stage">
+        <h5>Stage 2 &mdash; embedding cosine &ge; 0.85</h5>
+        <p>Encode each statement with <code>mxbai-embed-large-v1</code> (1024-dim, L2-normalized); flag pairs by cosine similarity. High recall over close-content pairs; also flags same-topic-but-distinct-problem pairs (false positives).</p>
+      </div>
+
+      <div class="pipeline-stage">
+        <h5>Stage 3 &mdash; Haiku-4.5 LLM-judge precision filter</h5>
+        <p>For each Stage-2 candidate, a Haiku-4.5 judge classifies the pair as a <em>close duplicate</em> (paraphrase / numeric variation of the same problem) or a <em>same-topic neighbor</em> (related physics, distinct setup). Only Stage-3 close-duplicates are removed. Cosine-bucketed precision: 100% close-dup at cos &ge; 0.95; 1.5% at cos &isin; [0.85, 0.87).</p>
+      </div>
+
+      <div class="notification is-light is-info" style="margin-top: 1.5rem;">
+        <strong>Robustness:</strong> Embedder Spearman &rho; = 0.78 vs. OpenAI <code>text-embedding-3-large</code>
+        (OpenAI candidate set is a strict subset of mxbai's at every threshold). Cross-judge agreement on the Sonnet-as-judge
+        protocol over a 50-problem PhysOlym-A subset: Cohen's &kappa; = 0.44 vs. GPT-4o, with GPT-4o the more lenient judge
+        (self-grading direction is opposite to the feared bias).
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="section" style="background: #fafbfc;">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Released Artifacts</h2>
+    <div class="content">
+      <div class="table-container" style="margin-top: 1.5rem;">
+        <table class="table is-fullwidth artifact-table">
+          <thead>
+            <tr>
+              <th>Artifact</th>
+              <th>Size</th>
+              <th>Purpose</th>
+              <th>Hosting</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>PhysCorp-A</strong></td>
+              <td>6,432 records</td>
+              <td>Audited multimodal physics corpus (fully Stage-3 clean against six public evals).</td>
+              <td><a href="https://huggingface.co/datasets/physics-r1-anonymous/physcorp-a" target="_blank">&#x1F917; HuggingFace</a></td>
+            </tr>
+            <tr>
+              <td><strong>PhysR1Corp</strong></td>
+              <td>2,268 records</td>
+              <td>Closed-form RL training pool (numeric / MCQ-gradable carve-out).</td>
+              <td><a href="https://huggingface.co/datasets/physics-r1-anonymous/physr1corp" target="_blank">&#x1F917; HuggingFace</a></td>
+            </tr>
+            <tr>
+              <td><strong>PhysOlym-A</strong></td>
+              <td>500 problems</td>
+              <td>Held-out olympiad eval, 99.8% novel-source, EN/ET bilingual, native difficulty.</td>
+              <td><a href="https://huggingface.co/datasets/physics-r1-anonymous/physolym-a" target="_blank">&#x1F917; HuggingFace</a></td>
+            </tr>
+            <tr>
+              <td><strong>PhysCorp-pre-audit</strong></td>
+              <td>14,294 records</td>
+              <td>Raw pre-audit pool &mdash; released so users can re-run the audit.</td>
+              <td><a href="https://huggingface.co/datasets/physics-r1-anonymous/physcorp-pre-audit" target="_blank">&#x1F917; HuggingFace</a></td>
+            </tr>
+            <tr>
+              <td><strong>Physics-R1 (recipe)</strong></td>
+              <td>code + config</td>
+              <td>GSPO+DAPO recipe cold-started from Qwen3-VL-8B-Thinking with binary correctness reward.</td>
+              <td><a href="https://github.com/shanyang-me/physics-r1-neurips2026" target="_blank">GitHub</a></td>
+            </tr>
+            <tr>
+              <td><strong>Audit pipeline</strong></td>
+              <td>Python</td>
+              <td>Three-stage contamination audit (<code>audit/</code>) + saved best-overlap scores + judge labels.</td>
+              <td><a href="https://github.com/shanyang-me/physics-r1-neurips2026/tree/main/audit" target="_blank">GitHub</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Dataset Compositions</h2>
+    <p class="has-text-centered" style="color: #6b7280; margin-bottom: 1.5rem;">
+      Hover for exact counts. Click a slice to isolate it.
+    </p>
+
+    <div class="columns">
+      <div class="column is-4">
+        <div class="composition-card">
+          <h4>PhysCorp-A</h4>
+          <div class="composition-sub">6,432 records &middot; by source family</div>
+          <div id="chart-physcorp-a" class="plot"></div>
+        </div>
+      </div>
+
+      <div class="column is-4">
+        <div class="composition-card">
+          <h4>PhysR1Corp</h4>
+          <div class="composition-sub">2,268 records &middot; numeric vs MCQ-gradable</div>
+          <div id="chart-physr1corp" class="plot"></div>
+        </div>
+      </div>
+
+      <div class="column is-4">
+        <div class="composition-card">
+          <h4>PhysOlym-A</h4>
+          <div class="composition-sub">500 problems &middot; by olympiad source</div>
+          <div id="chart-physolym-a" class="plot"></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="has-text-centered" style="color: #6b7280; font-size: 0.9rem; margin-top: 0.5rem;">
+      <em>PhysCorp-A</em>: 1,609 first-ML olympiad records (Estonian PhO, Zhou, IPhO+NBPhO+EuPhO, APhO+USAPhO+INPhO) preserved in full;
+      remaining 4,823 from repackaged sources after the three-stage audit (per-family counts shown are approximate, allocated proportionally from the
+      <a href="https://huggingface.co/datasets/physics-r1-anonymous/physcorp-pre-audit" target="_blank">pre-audit pool</a>; exact counts available in the released dataset card).
+    </p>
+  </div>
+</section>
+
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Physics-R1 Results</h2>
+    <p class="has-text-centered" style="color: #6b7280; margin-bottom: 1.5rem;">
+      Liberal accuracy (Sonnet-as-judge); subscripts are &Delta; vs. Qwen3-VL-8B-Thinking base.
+    </p>
+
+    <div class="table-container">
+      <table class="table is-fullwidth results-table">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>PhyX-1k</th>
+            <th>PhyX-3k</th>
+            <th>PhysReason</th>
+            <th>PUB-OE</th>
+            <th>OlymBench</th>
+            <th>PhysOlym-A</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td colspan="7" style="background: #f3f4f6; font-style: italic; font-size: 0.9em;">Closed-source frontier</td>
+          </tr>
+          <tr><td>Claude Sonnet 4.5</td><td>79.7</td><td>80.6</td><td>36.6</td><td>37.7</td><td>50.4</td><td>33.4</td></tr>
+          <tr><td>Gemini 2.5 Pro</td><td>75.1</td><td>49.8</td><td>38.8</td><td>33.4</td><td>37.4</td><td>12.2</td></tr>
+          <tr><td>GPT-4o</td><td>70.4</td><td>53.6</td><td>48.9</td><td>31.5</td><td>19.7</td><td>8.0</td></tr>
+          <tr>
+            <td colspan="7" style="background: #f3f4f6; font-style: italic; font-size: 0.9em;">Open-source bases</td>
+          </tr>
+          <tr><td>Qwen3-VL-32B-Thinking</td><td>73.8</td><td>84.2</td><td>25.1</td><td>32.8</td><td>53.9</td><td>13.2</td></tr>
+          <tr><td>Qwen3-VL-8B-Thinking (base)</td><td>73.7</td><td>74.4</td><td>23.9</td><td>35.3</td><td>39.3</td><td>8.0</td></tr>
+          <tr><td>InternVL3-8B</td><td>46.8</td><td>43.1</td><td>13.3</td><td>23.5</td><td>10.4</td><td>4.0</td></tr>
+          <tr class="ours">
+            <td>Physics-R1 (binary, recommended)</td>
+            <td>78.0 <span class="delta">+4.3</span></td>
+            <td>76.9 <span class="delta">+2.5</span></td>
+            <td>29.8 <span class="delta">+5.9</span></td>
+            <td>37.0 <span class="delta">+1.7</span></td>
+            <td>45.4 <span class="delta">+6.1</span></td>
+            <td>25.6 <span class="delta">+17.6</span></td>
+          </tr>
+          <tr class="ours">
+            <td>Physics-R1 (dense, ablation)</td>
+            <td>78.3 <span class="delta">+4.6</span></td>
+            <td>77.5 <span class="delta">+3.1</span></td>
+            <td>23.3</td>
+            <td>36.7 <span class="delta">+1.4</span></td>
+            <td>40.5 <span class="delta">+1.2</span></td>
+            <td>19.2 <span class="delta">+11.2</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="has-text-centered" style="color: #6b7280; margin-top: 1rem; font-size: 0.95em;">
+      Physics-R1 binary lifts PhysOlym-A liberal +17.6 pp over the 8B base, still 7.8 pp below Sonnet 4.5.
+      Recipe is reported as evidence the audited corpus is trainable, not as a SOTA capability claim.
+    </p>
+  </div>
+</section>
+
+
+<section class="section" style="background: #fafbfc;">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 has-text-centered">Quick start</h2>
+
+    <div class="content">
+      <h4 class="title is-5">Run the audit pipeline</h4>
+      <pre><code>git clone https://github.com/shanyang-me/physics-r1-neurips2026
+cd physics-r1-neurips2026
+pip install -r requirements.txt
+
+python audit/audit_two_stage.py \
+    --train_jsonl your_pool.jsonl \
+    --eval_jsonl  data/physolym_a.jsonl \
+    --jaccard_thr 0.4 \
+    --cosine_thr 0.85 \
+    --emit report.json</code></pre>
+
+      <h4 class="title is-5" style="margin-top: 1.5rem;">Load PhysOlym-A</h4>
+      <pre><code>from datasets import load_dataset
+ds = load_dataset("physics-r1-anonymous/physolym-a", split="test")
+print(ds[0])  # {source, messages, solution, metadata}</code></pre>
+    </div>
+  </div>
+</section>
+
+
+<section class="section">
+  <div class="container is-max-desktop content">
+    <h2 class="title is-3 has-text-centered">BibTeX</h2>
+    <pre style="font-size: 0.9em;"><code>@inproceedings{yang2026physicsr1,
+  title     = {Physics-R1: An Audited Olympiad Corpus and Recipe for Visual Physics Reasoning},
+  author    = {Yang, Shan},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS) Datasets and Benchmarks Track},
+  year      = {2026}
+}</code></pre>
+  </div>
+</section>
+
+
+<footer class="footer">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content has-text-centered">
+          <p>
+            Code: <a href="https://github.com/shanyang-me/physics-r1-neurips2026">github.com/shanyang-me/physics-r1-neurips2026</a><br>
+            Datasets are released under <strong>CC BY-NC 4.0</strong> (per-source provenance in the paper appendix).
+            Code is released under the <strong>Apache-2.0</strong> license.
+          </p>
+          <p style="font-size: 0.85em; color: #6b7280;">
+            Site adapted from the <a href="https://github.com/eliahuhorwitz/Academic-project-page-template" target="_blank">Academic Project Page Template</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function() {
+  function renderWhenReady() {
+    if (typeof Plotly === 'undefined') {
+      setTimeout(renderWhenReady, 100);
+      return;
+    }
+
+    var palette = ['#2563eb','#3b82f6','#60a5fa','#93c5fd','#1e40af','#7c3aed','#a78bfa','#c4b5fd','#475569'];
+    var commonLayout = {
+      margin: { l: 8, r: 8, t: 8, b: 8 },
+      showlegend: true,
+      legend: {
+        orientation: 'v',
+        y: 0.5,
+        x: 1.05,
+        font: { size: 10 }
+      },
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      font: { family: 'Inter, sans-serif', size: 11 }
+    };
+    var commonConfig = { displayModeBar: false, responsive: true };
+
+    // PhysCorp-A: 6,432 records by source family.
+    // First-ML olympiad block (1,609) preserved in full; the 4,823 from the 5 repackaged
+    // source families is allocated proportionally to the pre-audit shares minus the
+    // documented PhysReason -540 cousin drops, summing to 6,432.
+    var physcorpA = {
+      values: [2191, 945, 909, 513, 262, 692, 418, 258, 241],
+      labels: [
+        'UGPhysics',
+        'OpenStax Physics',
+        'Physics Stack Exchange',
+        'MMMU + o1-CoT seed',
+        'PhysReason',
+        'Kevin Zhou Olympiad Handouts',
+        'Estonian Physics Olympiad',
+        'IPhO + NBPhO + EuPhO',
+        'APhO + USAPhO + INPhO'
+      ],
+      type: 'pie',
+      hole: 0.5,
+      sort: false,
+      direction: 'clockwise',
+      textinfo: 'percent',
+      textposition: 'inside',
+      hovertemplate: '<b>%{label}</b><br>~%{value:,} records (%{percent})<extra></extra>',
+      marker: { colors: palette }
+    };
+    Plotly.newPlot('chart-physcorp-a', [physcorpA], commonLayout, commonConfig);
+
+    // PhysR1Corp: 2,268 records, numeric vs MCQ-gradable carve-out of PhysCorp-A.
+    var physr1corp = {
+      values: [1599, 669],
+      labels: ['Numeric (open-ended)', 'MCQ-gradable'],
+      type: 'pie',
+      hole: 0.5,
+      sort: false,
+      textinfo: 'label+percent',
+      textposition: 'inside',
+      hovertemplate: '<b>%{label}</b><br>%{value:,} records (%{percent})<extra></extra>',
+      marker: { colors: ['#2563eb', '#7c3aed'] }
+    };
+    Plotly.newPlot('chart-physr1corp', [physr1corp], commonLayout, commonConfig);
+
+    // PhysOlym-A: 500 problems by olympiad source.
+    var physolymA = {
+      values: [200, 136, 85, 79],
+      labels: [
+        'Kevin Zhou Olympiad Handouts',
+        'Estonian Physics Olympiad',
+        'IPhO + NBPhO + EuPhO',
+        'APhO + USAPhO + INPhO'
+      ],
+      type: 'pie',
+      hole: 0.5,
+      sort: false,
+      textinfo: 'percent',
+      textposition: 'inside',
+      hovertemplate: '<b>%{label}</b><br>%{value} problems (%{percent})<extra></extra>',
+      marker: { colors: ['#2563eb', '#3b82f6', '#7c3aed', '#a78bfa'] }
+    };
+    Plotly.newPlot('chart-physolym-a', [physolymA], commonLayout, commonConfig);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderWhenReady);
+  } else {
+    renderWhenReady();
+  }
+})();
+</script>
+
+</body>
+</html>
