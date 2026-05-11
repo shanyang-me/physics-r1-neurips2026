@@ -22,7 +22,8 @@ import argparse, json, re, subprocess, threading, time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-CLAUDE_BIN = '$HOME/.local/bin/claude'
+import os as _os
+CLAUDE_BIN = _os.path.expanduser('~/.local/bin/claude')
 TIMEOUT = 90
 GOLD_CACHE_PATH = '/tmp/tbd20_results/pub_oe_gold_cache.json'
 

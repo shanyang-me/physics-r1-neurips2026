@@ -13,7 +13,8 @@ import argparse, json, subprocess, threading, time, re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-CLAUDE_BIN = '$HOME/.local/bin/claude'
+import os as _os
+CLAUDE_BIN = _os.path.expanduser('~/.local/bin/claude')
 TIMEOUT = 90
 
 
