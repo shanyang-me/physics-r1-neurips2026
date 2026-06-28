@@ -1,137 +1,108 @@
-# PhysGym — Turning Physics-R1 into an Agentic RL Prototype
+# Lumi-RE — Turning the Lumi Research System into an Agentic RL Prototype
 
-> Design / proposal doc for evolving this repo from **single-turn RLVR** into an
-> **agentic, tool-use RL** prototype. Intended as a frontier-lab hiring artifact:
-> small enough to actually finish and run, deep enough to show research taste.
+> Design / proposal doc. Goal: evolve **Lumi** (a prompted multi-agent research
+> orchestration system) into an **agentic RL** prototype where one agent's policy is
+> *learned* via multi-turn RLVR — reusing the GSPO/DAPO/verl stack already shipped in
+> **Physics-R1**. Intended as a frontier-lab hiring artifact aligned to the RL Canon
+> plan (M7: agentic RL) and the Codex RE / RL-for-code endgame.
 
 ---
 
-## 1. What this repo is today
+## 1. The two assets this builds on
 
-`physics-r1-neurips2026` is a **single-turn RLVR pipeline** for visual olympiad physics:
+**Lumi Research Manager** — a Next.js multi-agent research platform with a
+`lumi-research` MCP + Notion-backed projects DB. Role-prompted agents — Scout
+(literature), Theorist (hypotheses), Architect (experiment design), Coder
+(implementation), Datasmith (data), Commander (coordinator), Writer/Planner — run
+turn-based "meetings" through a research pipeline stage machine
+(DEFINE→SURVEY→PLAN→HYPOTHESIZE→DESIGN→IMPLEMENT→EXECUTE→WRITE), writing inventory
+back to the DB. Human-in-the-loop, permission-gated.
 
-- **`reward/reward_physics.py`** — a 5-component dense verifiable reward computed
-  *passively* from the final transcript:
-  `r = r_ans + r_fmt + r_dim + r_sym + r_cons`, clipped to `[-1, 1]`, with an
-  `AUDIT_LAMBDA` contamination down-weighting hook on `r_ans`.
-- **`audit/`** — two-stage contamination audit (5-gram Jaccard → mxbai embedding
-  cosine) of the train pool against held-out evals.
-- **`data/make_splits.py`** — taxonomy-tagged (concept × difficulty × modality)
-  train/eval split builder.
-- **`eval/` + `judge/`** — vLLM batched eval harnesses + Sonnet LLM-judge
-  alignment (strict + liberal).
-- Training is **verl GRPO/GSPO**: one rollout → one scalar reward → policy update.
+> **Lumi today is a *prompted* harness. Nothing is trained.** The agents are LLMs
+> with roles and tools.
 
-It is a strong RLVR + eval-integrity story. What it is **not** yet: agentic. The
-policy never *acts* — it emits one chain of thought and the verifiers grade the
-transcript after the fact.
+**Physics-R1** (`physics-r1-neurips2026`) — a shipped single-turn RLVR pipeline:
+5-component verifiable reward (`reward/reward_physics.py`), contamination audit,
+verl GRPO/GSPO + DAPO. This is the **reusable RL stack**, not the thing being
+converted.
 
-## 2. The core reframe
+## 2. The core insight
 
-**The reward components are already verifiers. Agentic RL turns them into tools the
-policy calls mid-rollout.**
+Lumi already *is* the three pillars of agentic RL — environment, reward signal,
+policy — in hand-written form. Turning it into an agentic RL prototype =
+**make one agent's policy learned via multi-turn RLVR.** That single move:
 
-| Today (passive shaping)                          | Agentic (active tool)                                  |
-| ------------------------------------------------ | ------------------------------------------------------ |
-| `reward_dimensional()` grades units in final text | `units(expr)` — dimensional check the agent calls      |
-| `reward_symbolic()` checks a `\frac` parses        | `cas(expr)` — sympy solve/simplify the agent invokes   |
-| `reward_conservation()` penalizes violations       | `check_conservation(...)` queried before submitting    |
-| `_base_score()` final grade                        | terminal `submit(answer)` → outcome reward             |
+- ships **M7** of the RL Canon plan ("extend a GRPO loop to a multi-turn tool-use
+  environment"),
+- sets up the **Codex RE / RL-for-code** specialization directly,
+- fuses the two real strengths — agentic systems + LLM-RL — into one artifact,
+- stays *finishable* by scoping to a **verifiable** slice.
 
-One-sentence pitch: *"We already built the verifiers; the prototype makes them an
-interactive environment and learns the tool-use policy with multi-turn RL."* That
-narrative demonstrates RLVR fluency, environment design, and credit assignment on a
-domain where we already own audited data and trusted evals.
+## 3. Headline prototype — **Lumi-RE-Gym**
 
-## 3. PhysGym — the environment
+Don't RL-train the whole multi-agent system (open-ended research isn't gradeable).
+Carve out the **Coder / research-engineer** agent: RE tasks are *verifiable* (tests
+pass, metric improves, experiment reproduces) — exactly the Codex RE setting.
 
-A gym-like, multi-turn environment. State = problem (text + optional diagram) +
-running scratchpad + tool-call history. The policy interleaves reasoning with tool
-calls until it emits a terminal `submit`.
+- **Task distribution** — real RE tasks mined from Lumi's own project history +
+  synthesized: "make this test pass", "implement this eval harness", "reproduce
+  metric X", "fix this bug". Self-bootstrapping: Lumi generates its own curriculum.
+- **Environment** — sandboxed repo. Observation = repo state + task spec + tool
+  outputs. Tools = shell / file-edit / run-tests / search / `lumi-research` MCP.
+  Episode = multi-turn until `submit` or step/cost budget.
+- **Reward** — verifiable outcome (tests pass / metric delta / experiment completes)
+  + light process shaping (valid tool calls, partial test pass) − penalties (reward
+  hacking, budget overrun).
+- **RL** — multi-turn GRPO/GSPO, **observation-token masking** (train only on policy
+  tokens), trajectory-level advantage, async rollouts. Reuse the Physics-R1 verl
+  recipe. Start with a 3–7B code model for reproducibility.
 
-**Tools**
+## 4. Three frontier-signal angles (go deep on 1–2)
 
-- `python(code)` — sandboxed numpy/scipy/sympy interpreter (subprocess, no net, time + mem cap)
-- `cas(expr)` — symbolic solve / simplify / dimensional analysis (sympy)
-- `units(expr)` — dimensional consistency (reuse `reward_dimensional` internals)
-- `check_conservation(...)` — energy/momentum balance (reuse `reward_conservation`)
-- `read_diagram(bbox)` — crop/zoom the problem image (visual physics → visual tool
-  use, a strong differentiator)
-- `submit(answer)` — terminal action; triggers the verifiable outcome reward
-
-**Reward (trajectory)**
-
-```
-R = r_outcome (_base_score on submitted answer)        # terminal, verifiable
-  + Σ small process rewards (valid + successful tool calls)
-  - penalties (malformed calls, hacking patterns, step budget overrun)
-```
-
-**RL changes vs today**
-
-- Multi-turn rollout loop (verl already supports tool-calling agents).
-- **Mask tool-output / observation tokens from the loss** (don't train on what the
-  env said, only on what the policy generated).
-- Trajectory-level advantage (GRPO group over full trajectories); optional
-  turn-level credit as a stretch.
-
-## 4. Three frontier-signal research angles (go deep on 1–2)
-
-### 4a. Reward-hacking red-team → hardening  *(highest hiring value)*
-
-The current dense reward is gameable **right now**:
-
-- `reward_symbolic()` (`reward/reward_physics.py:366`) fires on a **single**
-  parseable `\frac{a}{b}` *anywhere* in the text → +0.20 for a junk fraction.
-- `reward_format()` rewards **any** non-empty `\boxed{}` → +0.10 for an empty-ish box.
-
-A policy can farm **+0.30** with a throwaway fraction and a boxed token, no real
-reasoning. Plan: (1) build a probe that exploits this and measure incidence over
-training; (2) harden — require the `\frac` to be causally on the solution path, or
-replace heuristic shaping with a process verifier; (3) re-measure. Reward-hacking
-analysis is exactly what RL/alignment teams live in.
-
-### 4b. Process supervision vs outcome-only
-
-Promote the existing Sonnet judge to a **step-level** verifier and run the clean
-ablation: outcome-only vs dense-shaped vs process-supervised. A real learning-curve
-comparison is a portfolio-grade result.
-
-### 4c. Self-verification / auto-grading
-
-Use `cas` + a small simulator to *generate* verifiable rewards for problems lacking
-gold answers (bootstrap reward from tools). Directly relevant to scalable oversight.
+1. **Long-horizon credit assignment** — outcome-only vs process vs turn-level
+   rewards. *The* M7 question and a standard interview probe.
+2. **Reward hacking in RE agents** *(highest hiring value)* — the canonical
+   SWE-agent failure: deleting/weakening the failing test, hardcoding expected
+   output, overfitting the metric. Build an exploit probe + hardened verifier +
+   incidence-over-training curve. Gold for an Anthropic/OpenAI interview.
+3. **Hierarchical manager-worker RL** — train **Commander** as a meta-policy routing
+   to sub-agents (options framework / HiPER). Higher ceiling, higher risk.
 
 ## 5. Scoping — the killer is over-scoping
 
-**MVP (runs on 1 GPU):**
-- Text-only subset (defer VL), Qwen2.5-3B / Qwen3-4B.
-- 2 tools: `python`, `cas`. Terminal reward + reward-hack probe.
-- ~200 problems from the audited pool.
-- Deliverable: training curve + reward-hacking case study.
+**MVP (finishable):** one agent (Coder), one verifiable task family, sandboxed repo,
+~100–300 tasks, 3–7B model, 2–3 tools, terminal reward + reward-hack probe.
+Deliverable: training curve (resolve rate) + reward-hack incidence + short writeup.
 
-**Stretch:** add VL + `read_diagram`; process rewards; the 3-way ablation; the
-self-verification loop.
+**Stretch:** process rewards; hierarchical Commander; auto-curriculum (Lumi proposes
+harder tasks); a Scout/retrieval-RL variant (reward = citation grounding / answer
+faithfulness via judge).
 
-## 6. Portfolio deliverables
+**Honest risks:**
+- Lumi's "experiments" are partly DB records, not real artifacts — you must build a
+  *real* executable sandbox + task harness for verifiable reward.
+- Compute for multi-turn rollouts.
+- Resist the urge to train the full multi-agent system.
 
-- PhysGym as a clean, standalone, `pip install -e .` package with a gym-style API.
-- 1–2 small trained checkpoints (reproducible on modest hardware).
-- A 3–5 page tech report with curves: pass@1, tool-success rate, **reward-hack
-  incidence over training**.
-- The reward-hacking case study as the centerpiece.
+## 6. Portfolio narrative
 
-## 7. Mapping to hiring threads
+The thread is the value, and it's already coherent:
 
-- **Agents / tool-use RL** — §3 env design + multi-turn credit assignment.
-- **RLVR / reward hacking** — §4a/§4b, verifiable rewards + scalable oversight.
-- **Multimodal reasoning** — VL + `read_diagram` visual tool use.
+> *"I built an autonomous multi-agent research system (Lumi, prompted). I shipped
+> single-turn RLVR with GSPO+DAPO (Physics-R1). Lumi-RE makes the research-engineer
+> agent **learned** — multi-turn RLVR on verifiable coding tasks, reusing that stack
+> — with a reward-hacking red-team. That is the Physics-R1 → RL-for-code → Codex RE
+> arc."*
 
-## 8. Suggested first steps
+Maps to hiring threads: agents/tool-use RL (§3), RLVR/reward-hacking/scalable
+oversight (§4), and ML-systems (reusing real verl/vLLM infra).
 
-1. Carve out `physgym/` package skeleton: `env.py`, `tools/`, `reward.py`
-   (re-exporting `reward_physics.compute_score`).
-2. Stand up the `python` + `cas` tools with a hard sandbox.
-3. Write the reward-hack probe against current `r_sym`/`r_fmt` and record baseline
-   incidence — this is the cheapest high-signal result.
-4. Wire the multi-turn loop into verl; train the MVP; plot curves.
+## 7. Suggested first steps
+
+1. Build a minimal sandboxed RE task harness: repo snapshot + task spec + hidden
+   tests + a deterministic verifier. Seed ~30 tasks from Lumi history.
+2. Stand up the multi-turn env loop with `shell` + `edit` + `run_tests` tools.
+3. Write the reward-hack probe (test-deletion / output-hardcoding) and record
+   baseline incidence — cheapest high-signal result.
+4. Wire multi-turn GRPO into verl with observation masking; train the MVP; plot
+   resolve rate + hack incidence.
