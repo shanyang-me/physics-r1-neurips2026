@@ -10,17 +10,30 @@
 
 ## 0. Thesis
 
-> **FunSearch, but the proposer learns.** Prior AI-discovery systems either RL-train a
-> bespoke per-problem model (AlphaTensor, AlphaDev) or drive a *frozen* LLM with an
-> external evolutionary loop (FunSearch, AlphaEvolve). CS-Discover trains a **general,
-> tool-using agentic policy with RLVR on the discovery objective**, so it *amortizes
-> search into its weights* — it gets better at proposing across problems instead of
-> re-searching from scratch.
+> **"FunSearch, but the proposer learns" is no longer the contribution — it is
+> validated prior art.** As of mid-2026 (see `LANDSCAPE.md`), **EvoTune** (EPFL, Apr
+> 2025) already RL-fine-tunes the proposer's weights from discovery signal and beats
+> FunSearch on bin-packing/TSP; **ThetaEvolve** (Nov 2025) does test-time RL on the
+> proposer. So the bet is *de-risked, not novel*. CS-Discover's contribution is the
+> **conjunction nobody has shipped**: a discovery agent that is (1) general-purpose,
+> (2) beyond toy combinatorial tasks, (3) RL-trained-proposer, (4) verifiable-reward,
+> (5) **novelty/contamination-audited inside the reward loop**, and (6)
+> **cross-problem generalizing**. Existing systems have at most a few of these.
+
+**Lead with the two least-solved pieces, which this repo is uniquely set up for:**
+- **(6) cross-problem transfer** — does the RL-trained proposer get better at
+  *discovering on held-out problems* (the L2 split in `CS_DISCOVERY_EVAL.md`)? No
+  system has shown this; EvoTune/ThetaEvolve are per-problem.
+- **(5) novelty audit + hardened verifier in the loop** — reuse this repo's `audit/`
+  as a novelty gate. The 2026 reward-hacking literature ([LLMs Gaming Verifiers],
+  [Fuzzing RLVR Verifiers]) makes verifier integrity + contamination control the
+  credibility moat the AI-scientist field has failed to clear.
 
 CS is the right target because the **artifact and its verifier share one medium**:
 code executes, proofs check, benchmarks self-score. Verifiable reward is native and
 abundant — no LLM judge required. This is exactly why every real machine-discovery
-result lives in CS-adjacent domains.
+result lives in CS-adjacent domains. Keep verifiers cheap and hard-to-game
+(CUDA-L1 / KernelBench / SWE-Gym style) to hold integrity + compute tractable.
 
 ## 1. What "discovery" means here
 
@@ -43,14 +56,17 @@ objective.**
 
 ## 2. Positioning (the gap this fills)
 
-| System | General? | Proposer learns? | Agentic / tool-use? |
-| ------ | -------- | ---------------- | ------------------- |
-| AlphaTensor / AlphaDev | no (bespoke) | yes (RL) | no |
-| FunSearch / AlphaEvolve | yes | **no (frozen LLM)** | partial |
-| AlphaProof | no (Lean only) | yes | partial |
-| **CS-Discover** | **yes** | **yes (RLVR)** | **yes (multi-turn)** |
+| System | General | Proposer learns | Beyond toy tasks | Novelty-audited | Cross-problem transfer |
+| ------ | :-: | :-: | :-: | :-: | :-: |
+| AlphaTensor / AlphaDev | ✗ | ✓ (RL) | ✓ | ✗ | ✗ |
+| FunSearch / AlphaEvolve | ✓ | ✗ (frozen) | ✓ | ✗ | ✗ |
+| **EvoTune / ThetaEvolve** | ~ | **✓ (RL)** | ✗ (toy/combinatorial) | ✗ | ✗ (per-problem) |
+| AI-Scientist / co-scientist | ✓ | ✗ | ✓ | ✗ (prime critique target) | ✗ |
+| **CS-Discover** | ✓ | ✓ | → goal | **✓ (`audit/` in loop)** | **✓ (the L2 claim)** |
 
-The novel cell: a *general, learning, agentic* discoverer.
+EvoTune already owns the "proposer learns" cell — so CS-Discover's open cells are the
+last two columns: **novelty-audited-in-the-loop** and **cross-problem transfer**.
+Those are the contribution; everything left of them is reproduction of validated work.
 
 ## 3. The two crux problems
 
