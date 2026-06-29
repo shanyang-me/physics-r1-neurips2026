@@ -68,13 +68,45 @@ bin-packing, toward the true cap maxima) is precisely what a *learned, non-separ
 proposer must claim. This is the FunSearch/EvoTune gap, demonstrated empirically — and
 the target the RL trainer is measured against.
 
+### LLMProposer (Claude) closes that gap — live result
+
+Swapping the frozen model-free proposer for the Claude-backed `LLMProposer` (the
+frozen-LLM FunSearch baseline) **breaks the 2^n ceiling on the first try**:
+
+| proposer | cap-set n=4 | vs baseline (16) | vs optimum (20) |
+| -------- | :---------: | :--------------: | :-------------: |
+| MutationProposer (frozen, model-free) | 16 | tie | −4 |
+| **LLMProposer (Claude, frozen LLM)** | **20** | **+4** | **optimal** |
+
+Claude reached the **proven maximum cap (size 20)** in 10 successful evaluations
+(budget 12, 2 failed), using exactly the non-separable structure the mock cannot
+express — min digit count, variance, and pairwise modular interactions. The verified
+program is saved at `discovered/capset_n4_claude_size20.py`. Reproduce:
+
+```bash
+python -m cs_discover.run_search --domain capset --n 4 --proposer claude --budget 12
+```
+
+This is the proposer-quality axis demonstrated on our own substrate. Two honest
+caveats: (1) size-20 is the *known* optimum for n=4 — a real *discovery* claim needs
+larger n where the optimum is open, plus the novelty/contamination audit; (2) ~12
+sequential CLI calls took ~22 min wall-clock, so larger budgets need concurrency /
+caching. Both are tracked below.
+
 ## Not yet built (next phases)
 
-- `LLMProposer` backend — wire a model `call_fn` (the frozen-LLM FunSearch baseline).
 - RL trainer — fine-tune the proposer on (context, program, reward); compare to the
-  frozen proposer at matched evaluation budget (the headline ablation).
+  frozen Claude proposer at matched evaluation budget (the headline ablation).
 - Novelty/contamination audit hook (reuse repo `audit/`) as a reward-loop gate.
 - A 3rd family held out for the cross-problem-transfer (L2) measurement.
+- Larger cap-set n (open optima) for a genuine discovery claim; concurrency / a
+  candidate cache so the LLM loop scales past tiny budgets.
+
+## Done
+
+- `LLMProposer` backend on the Claude subscription (`search/claude_backend.py`) — the
+  frozen-LLM FunSearch baseline. Live result above: reaches the optimal cap (20) at
+  n=4, beating the model-free control's 16.
 
 ## Status
 
