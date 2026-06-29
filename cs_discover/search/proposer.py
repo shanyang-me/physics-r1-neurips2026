@@ -62,8 +62,12 @@ class LLMProposer(Proposer):
             f"{domain.spec()}\n\n"
             f"Here are the best programs found so far (higher score is better):\n\n"
             f"{examples}\n\n"
-            f"Write an improved version of `{domain.fn_name}`. Return ONLY a Python "
-            f"code block."
+            f"Write a NEW, improved version of `{domain.fn_name}` that scores higher. "
+            f"Think about the structure of the problem, not just constant tweaks — "
+            f"genuinely better heuristics often need non-linear / interaction terms.\n"
+            f"Constraints: define ONLY the function `{domain.fn_name}`; use only Python "
+            f"builtins and the `math` module (already in scope); write NO import "
+            f"statements. Return ONLY a single ```python code block."
         )
 
     def propose(self, domain: Domain, parents: List[Program], rng: random.Random) -> str:

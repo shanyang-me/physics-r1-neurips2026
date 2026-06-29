@@ -54,7 +54,13 @@ def evolve(
     n_fail = 0
 
     while n_eval < budget:
-        src = proposer.propose(domain, population, rng)
+        try:
+            src = proposer.propose(domain, population, rng)
+        except Exception:  # noqa: BLE001 — a flaky LLM call is a failed step, not a crash
+            n_eval += 1
+            n_fail += 1
+            history.append(best.score)
+            continue
         res = domain.safe_evaluate(src, train)
         n_eval += 1
         if res is None or not res.correct:

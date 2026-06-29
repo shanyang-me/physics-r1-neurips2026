@@ -2,3 +2,4 @@
 into (by replacing the frozen proposer with a learned one)."""
 from .proposer import Proposer, MutationProposer, LLMProposer
 from .evolution import evolve, SearchResult
+from .claude_backend import make_claude_call_fn, resolve_claude_bin

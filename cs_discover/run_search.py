@@ -10,12 +10,15 @@ from __future__ import annotations
 import argparse
 
 from cs_discover.domains import make_domain
-from cs_discover.search import MutationProposer, evolve
+from cs_discover.search import MutationProposer, LLMProposer, evolve, make_claude_call_fn
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--domain", default="binpacking", choices=["binpacking", "capset"])
+    ap.add_argument("--proposer", default="mutation", choices=["mutation", "claude"])
+    ap.add_argument("--model", default="claude-sonnet-4-5", help="model for --proposer claude")
+    ap.add_argument("--timeout", type=int, default=120, help="per-call timeout (claude)")
     ap.add_argument("--budget", type=int, default=300)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--n", type=int, default=4, help="cap-set dimension")
@@ -25,7 +28,15 @@ def main():
     kwargs = {"n": args.n} if args.domain == "capset" else {"dist": args.dist}
     domain = make_domain(args.domain, **kwargs)
 
-    res = evolve(domain, MutationProposer(), budget=args.budget, seed=args.seed)
+    if args.proposer == "claude":
+        proposer = LLMProposer(make_claude_call_fn(model=args.model, timeout=args.timeout))
+        if args.budget > 60:
+            print(f"[note] --proposer claude makes 1 model call per evaluation; "
+                  f"budget={args.budget} may be slow/costly.")
+    else:
+        proposer = MutationProposer()
+
+    res = evolve(domain, proposer, budget=args.budget, seed=args.seed)
 
     print(f"domain         : {domain.name}")
     print(f"evaluations    : {res.n_evaluated}  (failed: {res.n_failed})")
