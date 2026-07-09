@@ -17,9 +17,15 @@ domains/           the pluggable Domain contract (enables cross-problem transfer
   binpacking_domain  bin-packing as a Domain (EvoTune-comparable family)
   capset.py          cap-set verifier + greedy constructor (F_3^n)
   capset_domain      cap-set as a Domain (2nd family, for the transfer axis)
-search/            propose -> test -> refine loop (the RL trainer plugs in here)
+search/            propose -> test -> refine loop (workers + candidate cache)
   proposer.py        Proposer ABC; MutationProposer (no-LLM), LLMProposer (drop-in)
-  evolution.py       evolutionary search; budget = candidate evaluations
+  claude_backend.py  LLMProposer backend on the Claude subscription (frozen baseline)
+  evolution.py       evolutionary search; budget = proposer calls
+novelty.py         "discovered or recalled?" gate (5-gram Jaccard, mirrors audit/)
+rl/                make the proposer LEARN (EvoTune-style DPO) — see rl/README.md
+  collect.py         completions -> (chosen > rejected) preference pairs
+  dataset.py         DPO / SFT JSONL; build_dataset.py CLI
+  train_dpo.py       GPU DPO fine-tune of an open-weights proposer (trl)
 run_baselines.py   print the bin-packing baseline bar
 run_search.py      run discovery search on a domain, report vs baseline on held-out
 tests/             adversarial verifier battery + end-to-end search tests
@@ -102,18 +108,21 @@ wired). Concurrency (`--workers`) addresses the earlier ~22-min sequential wall-
 
 ## Not yet built (next phases)
 
-- RL trainer — fine-tune the proposer on (context, program, reward); compare to the
-  frozen Claude proposer at matched evaluation budget (the headline ablation).
-- Novelty/contamination audit hook (reuse repo `audit/`) as a reward-loop gate.
+- Execute the RL loop end-to-end on a GPU: collect Claude preference data →
+  `train_dpo.py` an open proposer → serve → run the matched-budget ablation. The
+  pipeline + trainer are in `rl/` (GPU-gated); only execution remains.
+- Iterate collect→train→search rounds (EvoTune's alternation).
 - A 3rd family held out for the cross-problem-transfer (L2) measurement.
-- Larger cap-set n (open optima) for a genuine discovery claim; concurrency / a
-  candidate cache so the LLM loop scales past tiny budgets.
+- Larger cap-set n (open optima, n≥7) for a genuine discovery claim.
 
 ## Done
 
-- `LLMProposer` backend on the Claude subscription (`search/claude_backend.py`) — the
-  frozen-LLM FunSearch baseline. Live result above: reaches the optimal cap (20) at
-  n=4, beating the model-free control's 16.
+- `LLMProposer` on the Claude subscription — the frozen-LLM FunSearch baseline. Reaches
+  optimal (20) at n=4 and 40 (89% of optimum) at n=5, beating the model-free control.
+- Scaling: `--workers` concurrency + source-keyed candidate cache.
+- Novelty gate (`novelty.py`) — reward-loop-ready "discovered or recalled?" scorer.
+- RL preference-data pipeline (`rl/`, CPU-tested) + GPU-ready DPO trainer + the
+  pre-registered ablation protocol (`rl/README.md`).
 
 ## Status
 
