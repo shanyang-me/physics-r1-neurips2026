@@ -73,25 +73,32 @@ the target the RL trainer is measured against.
 Swapping the frozen model-free proposer for the Claude-backed `LLMProposer` (the
 frozen-LLM FunSearch baseline) **breaks the 2^n ceiling on the first try**:
 
-| proposer | cap-set n=4 | vs baseline (16) | vs optimum (20) |
-| -------- | :---------: | :--------------: | :-------------: |
-| MutationProposer (frozen, model-free) | 16 | tie | −4 |
-| **LLMProposer (Claude, frozen LLM)** | **20** | **+4** | **optimal** |
+| proposer | cap-set n=4 | cap-set n=5 |
+| -------- | :---------: | :---------: |
+| separable ceiling (2^n) / model-free control | 16 | 32 |
+| **LLMProposer (Claude, frozen LLM)** | **20** (optimal) | **40** (89% of opt) |
+| known optimum | 20 | 45 |
 
-Claude reached the **proven maximum cap (size 20)** in 10 successful evaluations
-(budget 12, 2 failed), using exactly the non-separable structure the mock cannot
-express — min digit count, variance, and pairwise modular interactions. The verified
-program is saved at `discovered/capset_n4_claude_size20.py`. Reproduce:
+- **n=4:** Claude reached the **proven maximum (20)** in 10 successful evaluations
+  (budget 12), using min digit count, variance, pairwise modular interactions →
+  `discovered/capset_n4_claude_size20.py`.
+- **n=5:** Claude reached **40** (+8 over the 2^n=32 ceiling, ~89% of the optimum 45)
+  in 14 successful evals with **4 concurrent workers**, novelty 0.978. The program is
+  far richer (F_3 quadratic/cubic forms, higher moments, F_3* structure) →
+  `discovered/capset_n5_claude_size40.py`.
+
+Both verified as valid caps. Reproduce:
 
 ```bash
 python -m cs_discover.run_search --domain capset --n 4 --proposer claude --budget 12
+python -m cs_discover.run_search --domain capset --n 5 --proposer claude --budget 16 --workers 4 --novelty
 ```
 
-This is the proposer-quality axis demonstrated on our own substrate. Two honest
-caveats: (1) size-20 is the *known* optimum for n=4 — a real *discovery* claim needs
-larger n where the optimum is open, plus the novelty/contamination audit; (2) ~12
-sequential CLI calls took ~22 min wall-clock, so larger budgets need concurrency /
-caching. Both are tracked below.
+This is the proposer-quality axis demonstrated on our own substrate, and it **scales
+with n** — the harder the problem, the wider the gap over the separable ceiling. Honest
+caveat: these optima are *known*, so this proves the *mechanism*, not a novel
+discovery; a real discovery claim needs open-n (n≥7) plus the novelty audit (now
+wired). Concurrency (`--workers`) addresses the earlier ~22-min sequential wall-clock.
 
 ## Not yet built (next phases)
 
