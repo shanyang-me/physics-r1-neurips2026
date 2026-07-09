@@ -49,6 +49,13 @@ class BinPackingDomain(Domain):
     def seed_sources(self) -> List[str]:
         return [_SEED]
 
+    def reference_sources(self) -> List[str]:
+        best_fit = (
+            "def priority(item, remaining, capacity):\n"
+            "    return [-r for r in remaining]\n"
+        )
+        return [_SEED, best_fit]
+
     def train_split(self) -> str:
         return "train"
 

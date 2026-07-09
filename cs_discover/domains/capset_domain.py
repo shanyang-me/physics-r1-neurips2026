@@ -38,6 +38,13 @@ class CapSetDomain(Domain):
     def seed_sources(self) -> List[str]:
         return [_SEED]
 
+    def reference_sources(self) -> List[str]:
+        lexicographic = (
+            "def priority(vector, n):\n"
+            "    return -sum(val * (3 ** i) for i, val in enumerate(vector))\n"
+        )
+        return [_SEED, lexicographic]
+
     def evaluate(self, fn: Callable, split: str) -> EvalResult:
         cap = greedy_cap(fn, self.n)
         ok = is_cap(cap)  # airtight re-verification

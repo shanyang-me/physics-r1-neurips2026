@@ -100,6 +100,11 @@ class Domain(ABC):
     def seed_sources(self) -> List[str]:
         """Initial (often trivial) program(s) to seed search."""
 
+    def reference_sources(self) -> List[str]:
+        """Known/baseline program sources a discovery is checked against for novelty
+        (see novelty.py). Defaults to the seeds; override to add standard heuristics."""
+        return self.seed_sources()
+
     @abstractmethod
     def evaluate(self, fn: Callable, split: str) -> EvalResult:
         """Score a compiled candidate on a named split. Higher score = better."""
